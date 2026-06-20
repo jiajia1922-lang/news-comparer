@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- PWA & Mobile Web App Meta Tags -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#6366f1">
+  
+  <meta name="description" content="FrameFocus(프레임포커스)는 동일 시사 이슈를 시장친화, 노동보호, 객관분석 등 다채로운 언론사 프레임으로 대조하고 핵심 내용과 3줄 요약을 한눈에 분석해 주는 뉴스 프레임 비교 서비스입니다.">
+  <meta name="keywords" content="뉴스 프레임, 언론사 비교, 기사 분석, 3줄 요약, 언론 편향, 조세 형평성, 노동 개편, AI 규제">
+  <title>FrameFocus | 언론사별 뉴스 프레임 비교 플랫폼</title>
+  
+  <!-- FontAwesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- 1. Header Area -->
+  <header>
+    <div class="app-container header-inner">
+      <!-- Logo -->
+      <div class="logo" id="btn-logo" onclick="window.app.navigateToDashboard()">
+        <div class="logo-icon">F</div>
+        <span>FrameFocus</span>
+      </div>
+      
+      <!-- Search & Filters Container -->
+      <div class="search-container">
+        <div style="display: flex; gap: 8px; width: 100%;">
+          <div style="position: relative; flex: 1;">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="search-bar" class="search-input" placeholder="키워드나 언론사명을 검색해 보세요..." oninput="window.app.handleSearch(this.value)">
+          </div>
+          <!-- Filter toggle btn -->
+          <button id="btn-toggle-filter" class="btn-icon" title="상세 검색 조건 확장" onclick="window.app.toggleFilterPanel()">
+            <i class="fa-solid fa-filter"></i>
+          </button>
+        </div>
+        
+        <!-- Advanced Filter Options Panel (Toggled dynamically) -->
+        <div id="advanced-filter-panel" class="advanced-filter-panel">
+          <div class="filter-group">
+            <label class="filter-label" for="search-sort">정렬 기준</label>
+            <select id="search-sort" class="filter-select" onchange="window.app.handleSortChange(this.value)">
+              <option value="newest">최신 등록순</option>
+              <option value="relevance">이름 정확도순</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">언론사 프레임 성향</label>
+            <div style="display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap;">
+              <label class="checkbox-label-inline">
+                <input type="checkbox" id="filter-bias-con" checked onchange="window.app.handleBiasFilterChange()">
+                <span>시장친화·보수</span>
+              </label>
+              <label class="checkbox-label-inline">
+                <input type="checkbox" id="filter-bias-pro" checked onchange="window.app.handleBiasFilterChange()">
+                <span>노동보호·진보</span>
+              </label>
+              <label class="checkbox-label-inline">
+                <input type="checkbox" id="filter-bias-neu" checked onchange="window.app.handleBiasFilterChange()">
+                <span>객관분석·중립</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trending Search Keywords -->
+        <div class="trending-tags-row">
+          <span class="trending-title"><i class="fa-solid fa-fire text-primary"></i> 인기토픽:</span>
+          <span class="trending-tag" onclick="window.app.searchTrending('주52시간')">주52시간</span>
+          <span class="trending-tag" onclick="window.app.searchTrending('AI 기본법')">AI 기본법</span>
+          <span class="trending-tag" onclick="window.app.searchTrending('종부세')">종부세</span>
+          <span class="trending-tag" onclick="window.app.searchTrending('부자 감세')">부자 감세</span>
+        </div>
+      </div>
+      
+      <!-- Actions (Theme toggle, bookmarks, login) -->
+      <div class="header-actions">
+        <!-- Dark Mode Toggle -->
+        <button id="btn-theme-toggle" class="btn-icon" title="다크/라이트 모드 전환" onclick="window.app.toggleTheme()">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+        
+        <!-- Bookmarked Articles Button -->
+        <button id="btn-show-bookmarks" class="btn-icon header-nav-desktop" title="북마크 목록 보기" onclick="window.app.toggleBookmarksView()">
+          <i class="fa-solid fa-bookmark"></i>
+        </button>
+        
+        <!-- Interest Settings Button -->
+        <button id="btn-show-settings" class="btn-icon header-nav-desktop" title="관심 분야 설정" onclick="window.app.openSettingsModal()">
+          <i class="fa-solid fa-sliders"></i>
+        </button>
+        
+        <!-- Login Status and Button -->
+        <div id="login-status-area">
+          <button id="btn-login-modal" class="btn-primary" onclick="window.app.openLoginModal()">로그인</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 2. Main Content Dashboard -->
+  <main class="app-container dashboard-grid" id="dashboard-view">
+    <!-- Sidebar Panel (Categories & Preferences) -->
+    <aside class="sidebar-panel">
+      <!-- Category Card -->
+      <div class="sidebar-card">
+        <h3 class="sidebar-title">
+          <i class="fa-solid fa-layer-group text-primary"></i>
+          이슈 카테고리
+        </h3>
+        <ul class="category-list" id="category-tabs-list">
+          <li class="category-item active" id="cat-all" onclick="window.app.filterByCategory('all')">
+            <span>전체 이슈</span>
+            <span class="count" id="count-all">0</span>
+          </li>
+          <li class="category-item" id="cat-politics" onclick="window.app.filterByCategory('politics')">
+            <span>정치</span>
+            <span class="count" id="count-politics">0</span>
+          </li>
+          <li class="category-item" id="cat-economy" onclick="window.app.filterByCategory('economy')">
+            <span>경제</span>
+            <span class="count" id="count-economy">0</span>
+          </li>
+          <li class="category-item" id="cat-society" onclick="window.app.filterByCategory('society')">
+            <span>사회</span>
+            <span class="count" id="count-society">0</span>
+          </li>
+          <li class="category-item" id="cat-culture" onclick="window.app.filterByCategory('culture')">
+            <span>문화</span>
+            <span class="count" id="count-culture">0</span>
+          </li>
+          <li class="category-item" id="cat-science" onclick="window.app.filterByCategory('science')">
+            <span>IT/과학</span>
+            <span class="count" id="count-science">0</span>
+          </li>
+        </ul>
+      </div>
+      
+      <!-- Guide Card -->
+      <div class="sidebar-card">
+        <h3 class="sidebar-title">
+          <i class="fa-solid fa-circle-info text-primary"></i>
+          프레임 가이드
+        </h3>
+        <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 12px;">
+          각 신문사 아이콘의 색상은 아래와 같은 사회적·정책적 초점을 나타냅니다.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="dot conservative"></span>
+            <strong>시장친화 / 보수:</strong> 매일경제, 조선일보 등
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="dot progressive"></span>
+            <strong>노동·사회 / 진보:</strong> 한겨레, 경향신문 등
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="dot neutral"></span>
+            <strong>객관분석 / 중립:</strong> 연합뉴스, 한국일보 등
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Feed Section -->
+    <section style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="feed-header">
+        <h2 class="feed-title" id="feed-current-title">전체 뉴스 프레임 피드</h2>
+        <span style="font-size: 13.5px; color: var(--text-muted);" id="feed-items-count">총 3개의 이슈 분석 완료</span>
+      </div>
+      
+      <!-- Issue Cards Feed -->
+      <div id="issue-feed-container">
+        <!-- Dynamic rendering -->
+        <div class="empty-state">
+          <div class="empty-state-icon"><i class="fa-solid fa-spinner fa-spin"></i></div>
+          <p>뉴스 분석 데이터를 읽어오는 중입니다...</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 3. Side-by-Side Comparison Screen (Hidden by default) -->
+  <main class="app-container" id="comparison-view" style="display: none; margin-top: 32px;">
+    <div class="comparison-container">
+      <!-- Back Header -->
+      <div class="comparison-header-actions">
+        <button id="btn-back-dashboard" class="btn-back" onclick="window.app.navigateToDashboard()">
+          <i class="fa-solid fa-arrow-left"></i>
+          이슈 목록으로 돌아가기
+        </button>
+        <div style="text-align: right;">
+          <h2 id="comp-issue-main-title" style="font-size: 24px; font-weight: 800; margin-bottom: 4px;">주 52시간 근무제 유연화 개편안</h2>
+          <p id="comp-issue-meta" style="font-size: 13px; color: var(--text-muted);">등록일: 2026-06-20 | 분야: 경제</p>
+        </div>
+      </div>
+
+      <!-- Comparison Grid (3 columns for Conservative, Progressive, Neutral) -->
+      <div class="comparison-grid" id="comparison-cards-grid">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </div>
+  </main>
+
+  <!-- 4. Bookmarks Tab View (Hidden by default) -->
+  <main class="app-container" id="bookmarks-view" style="display: none; margin-top: 32px;">
+    <div class="bookmarks-view">
+      <!-- Back Header -->
+      <div class="comparison-header-actions">
+        <button class="btn-back" onclick="window.app.navigateToDashboard()">
+          <i class="fa-solid fa-arrow-left"></i>
+          이슈 피드로 돌아가기
+        </button>
+        <div>
+          <h2 style="font-size: 24px; font-weight: 800;">저장된 북마크 기사</h2>
+          <p style="font-size: 13px; color: var(--text-muted); text-align: right;" id="bookmark-count-text">총 0개 기사 보관 중</p>
+        </div>
+      </div>
+
+      <!-- Bookmarks List -->
+      <div class="bookmarks-grid" id="bookmarks-grid-container">
+        <!-- Dynamic -->
+      </div>
+    </div>
+  </main>
+
+  <!-- ==========================================================================
+     5. Mobile Bottom Navigation Bar (Hidden on Desktop)
+     ========================================================================== -->
+  <nav class="mobile-bottom-nav" id="mobile-navigation-bar">
+    <button class="nav-btn active" id="mobile-nav-home" onclick="window.app.navigateToDashboard()">
+      <i class="fa-solid fa-house"></i>
+      <span>피드</span>
+    </button>
+    <button class="nav-btn" id="mobile-nav-compare" onclick="window.app.handleMobileCompareBtn()">
+      <i class="fa-solid fa-right-left"></i>
+      <span>프레임 대조</span>
+    </button>
+    <button class="nav-btn" id="mobile-nav-bookmarks" onclick="window.app.toggleBookmarksView()">
+      <i class="fa-solid fa-bookmark"></i>
+      <span>북마크</span>
+    </button>
+    <button class="nav-btn" id="mobile-nav-settings" onclick="window.app.openSettingsModal()">
+      <i class="fa-solid fa-sliders"></i>
+      <span>관심설정</span>
+    </button>
+  </nav>
+
+  <!-- ==========================================================================
+     6. Modals & Overlay elements
+     ========================================================================== -->
+
+  <!-- Modal: Article Details & 3-Line Summary -->
+  <div class="modal-overlay" id="article-detail-modal" onclick="window.app.closeModalOnOverlay(event, 'article-detail-modal')">
+    <div class="modal-content">
+      <button class="modal-close" onclick="window.app.closeModal('article-detail-modal')" aria-label="닫기">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      
+      <!-- Header info -->
+      <div class="modal-press-row">
+        <span class="bias-tag" id="detail-article-bias">보수</span>
+        <strong id="detail-article-press" style="font-size: 15px;">매일경제</strong>
+      </div>
+      <h3 class="modal-title" id="detail-article-title">주 52시간제 유연화, '근로 시간 선택권...'</h3>
+      
+      <div class="modal-meta-row">
+        <span id="detail-article-date">작성일: 2026-06-20</span>
+        <button id="btn-detail-modal-bookmark" class="btn-icon" style="width: 34px; height: 34px;" title="북마크 등록/해제">
+          <i class="fa-solid fa-bookmark"></i>
+        </button>
+      </div>
+      
+      <!-- AI 3-Line Summary callout -->
+      <div class="summary-callout-box">
+        <h4>
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          AI 핵심 요약 (언론사 프레임 분석)
+        </h4>
+        <ul class="comp-summary-list" id="detail-article-summary-list" style="margin-left: 0;">
+          <!-- Dynamic -->
+        </ul>
+      </div>
+
+      <!-- Article content body -->
+      <div id="detail-article-body">
+        <!-- Dynamic with highlighted terms -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Login / Register -->
+  <div class="modal-overlay" id="login-modal" onclick="window.app.closeModalOnOverlay(event, 'login-modal')">
+    <div class="modal-content" style="max-width: 420px;">
+      <button class="modal-close" onclick="window.app.closeModal('login-modal')" aria-label="닫기">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      
+      <h3 class="modal-title" style="text-align: center; margin-bottom: 24px;" id="login-modal-title">FrameFocus 로그인</h3>
+      
+      <form id="login-form" onsubmit="window.app.handleLoginSubmit(event)">
+        <div class="form-group">
+          <label for="login-email" class="form-label">이메일 주소</label>
+          <input type="email" id="login-email" class="form-input" placeholder="example@email.com" required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="login-password" class="form-label">비밀번호</label>
+          <input type="password" id="login-password" class="form-input" placeholder="비밀번호를 입력하세요 (6자 이상)" required autocomplete="current-password">
+        </div>
+        <button type="submit" id="btn-submit-auth" class="btn-form-submit">로그인 진행</button>
+      </form>
+      
+      <div class="form-toggle-text" id="login-toggle-area">
+        계정이 없으신가요? <span onclick="window.app.toggleAuthMode()">회원가입하기</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: User Interest Settings -->
+  <div class="modal-overlay" id="settings-modal" onclick="window.app.closeModalOnOverlay(event, 'settings-modal')">
+    <div class="modal-content" style="max-width: 480px;">
+      <button class="modal-close" onclick="window.app.closeModal('settings-modal')" aria-label="닫기">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      
+      <h3 class="modal-title" style="margin-bottom: 12px;">맞춤 관심 분야 설정</h3>
+      <p style="font-size: 13.5px; color: var(--text-muted); margin-bottom: 20px;">
+        원치 않는 분야는 피드에서 가릴 수 있습니다. 설정 정보는 브라우저에 저장됩니다.
+      </p>
+      
+      <form id="settings-form" onsubmit="window.app.handleSettingsSubmit(event)">
+        <div class="settings-checkbox-grid">
+          <label class="checkbox-label">
+            <input type="checkbox" id="pref-politics" checked>
+            <span>정치</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="pref-economy" checked>
+            <span>경제</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="pref-society" checked>
+            <span>사회</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="pref-culture" checked>
+            <span>문화</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="pref-science" checked>
+            <span>IT/과학</span>
+          </label>
+        </div>
+        <button type="submit" class="btn-form-submit" style="margin-top: 24px;">설정 저장하기</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Area -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Load Scripts -->
+  <script src="data.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
